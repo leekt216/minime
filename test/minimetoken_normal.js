@@ -13,6 +13,8 @@ const { utils } = Web3;
 
 const verbose = false;
 
+const {expectRevert, BN, constants} = require("@openzeppelin/test-helpers");
+
 const log = (S) => {
   if (verbose) {
     console.log(S);
@@ -47,7 +49,7 @@ describe('MiniMeToken test', () => {
 
     testrpc.listen(8546, '127.0.0.1');
 
-    web3 = new Web3('ws://localhost:8546');
+    web3 = new Web3('http://localhost:8546');
     accounts = await web3.eth.getAccounts();
   });
 
@@ -214,5 +216,22 @@ describe('MiniMeToken test', () => {
     assert.equal(st.totalSupply, 17);
     assert.equal(st.balances[accounts[1]], 12);
     assert.equal(st.balances[accounts[2]], 5);
+  });
+
+  describe('Overflow', ()=>{
+    describe('#generateTokens()', () => {
+      let generateAmount = 5000;
+
+      it('should fail if totalSupply overflows', async () => {
+        const [controller, sender, ...others] = accounts;
+        const total = await miniMeToken.totalSupply();
+        await miniMeToken.generateTokens(sender, constants.MAX_UINT256.sub(new BN(total)), {
+          from: accounts[0]
+        });
+        await expectRevert.unspecified(
+          miniMeTokenClone.generateTokens(sender, generateAmount, { from: controller })
+        );
+      });
+    });
   });
 });
